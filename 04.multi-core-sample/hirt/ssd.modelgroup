@@ -1,0 +1,24 @@
+name: "single_ssd"
+priority: 1
+max_tmpbuf_size_mb: 3072
+
+input {
+	name: "data"
+}
+
+model {
+	name: "ssd"
+	bottom: {name: "data"}
+    top: {name: "conv4_3_norm_mbox_loc_perm"}
+    top: {name: "conv4_3_norm_mbox_conf_perm"}
+    top: {name: "fc7_mbox_loc_perm"}
+    top: {name: "fc7_mbox_conf_perm"}
+    top: {name: "conv6_2_mbox_loc_perm"}
+    top: {name: "conv6_2_mbox_conf_perm"}
+    top: {name: "conv7_2_mbox_loc_perm"}
+    top: {name: "conv7_2_mbox_conf_perm"}
+    top: {name: "conv8_2_mbox_loc_perm"}
+    top: {name: "conv8_2_mbox_conf_perm"}
+    top: {name:  "conv9_2_mbox_loc_perm"}
+    top: {name:  "conv9_2_mbox_conf_perm"}
+}

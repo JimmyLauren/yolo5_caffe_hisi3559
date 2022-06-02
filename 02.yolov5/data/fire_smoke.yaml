@@ -1,0 +1,27 @@
+# COCO 2017 dataset http://cocodataset.org
+# Train command: python train.py --data coco.yaml
+# Default dataset location is next to /yolov5:
+#   /parent_folder
+#     /coco
+#     /yolov5
+
+
+# download command/URL (optional)
+# download: bash data/scripts/get_coco.sh
+
+# train and val data as 1) directory: path/images/, 2) file: path/images.txt, or 3) list: [path1/images/, path2/images/]
+train: /data/jimmy/datasets/FireSmoke/coco_data/train/images  # 118287 images
+val: /data/jimmy/datasets/FireSmoke/coco_data/val/images  # 5000 images
+# test: /data/devin/data/head_shoulder/yolo_data/20210122_torchssd_test.txt  # 20288 of 40670 images, submit to https://competitions.codalab.org/competitions/20794
+
+# number of classes
+nc: 2
+
+# class names
+names: [ 'fire', 'smoke']
+
+# Print classes
+# with open('data/coco.yaml') as f:
+#   d = yaml.load(f, Loader=yaml.FullLoader)  # dict
+#   for i, x in enumerate(d['names']):
+#     print(i, x)

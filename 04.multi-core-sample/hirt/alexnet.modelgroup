@@ -1,0 +1,13 @@
+name: "single_alexnet"
+priority: 1
+max_tmpbuf_size_mb: 1024
+
+input {
+	name: "data"
+}
+
+model {
+	name: "alexnet"
+	bottom: {name: "data"}
+	top: {name: "prob"}
+}

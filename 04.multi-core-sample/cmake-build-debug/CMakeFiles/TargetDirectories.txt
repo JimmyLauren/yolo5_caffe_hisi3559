@@ -1,0 +1,3 @@
+/home/liujian/mnt/60/mpp/sample/svp/multi-core-sample/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/liujian/mnt/60/mpp/sample/svp/multi-core-sample/cmake-build-debug/CMakeFiles/multi_core_sample.dir
+/home/liujian/mnt/60/mpp/sample/svp/multi-core-sample/cmake-build-debug/CMakeFiles/edit_cache.dir

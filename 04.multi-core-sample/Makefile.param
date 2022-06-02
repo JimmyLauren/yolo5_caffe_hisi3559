@@ -1,0 +1,27 @@
+# Hisilicon Hi35xx sample Makefile.param
+export PARAM_FILE := ../../../../Makefile.param
+include $(PARAM_FILE)
+
+COMMON_DIR:=$(PWD)/../../../common
+AUDIO_ADP_DIR:=$(PWD)/../../../audio/adp
+
+include ../../../Makefile.param
+
+# opencv include
+include $(PWD)/../MakeFile_opencv.param
+
+MPI_LIBS += $(REL_LIB)/libive.a
+MPI_LIBS += $(REL_LIB)/libmd.a
+MPI_LIBS += $(REL_LIB)/libdsp.a
+MPI_LIBS += $(REL_LIB)/libnnie.a
+
+
+
+CFLAGS += -I$(PWD)/../common
+
+
+
+
+
+
+

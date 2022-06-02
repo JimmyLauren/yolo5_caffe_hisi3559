@@ -1,0 +1,18 @@
+name: "single_rfcn"
+priority: 1
+max_tmpbuf_size_mb: 2048
+
+input {
+    name: "data"
+}
+
+model {
+    name: "rfcn"
+    bottom: { name: "data" }
+    top: { name: "proposal" }
+    top: { name: "cls_prob_reshape" }
+    top: { name: "bbox_pred_reshape" }
+    cops {
+        name: "proposal"
+    }
+}

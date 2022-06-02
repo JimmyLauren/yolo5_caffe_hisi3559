@@ -1,0 +1,30 @@
+include $(PWD)/../Makefile.param
+
+PROPOSAL_WITHOUT_PERMUTE_COMPILE_DIR = $(PWD)/plugins/proposal_without_permute
+
+CPPFLAGS += -I$(REL_INC)
+CPPFLAGS += -I$(PROPOSAL_WITHOUT_PERMUTE_COMPILE_DIR)/../../common/include
+CPPFLAGS += -I$(PROPOSAL_WITHOUT_PERMUTE_COMPILE_DIR)/include
+CPPFLAGS += -O3
+CPPFLAGS += -DON_BOARD
+CPPFLAGS += $(FLAGS)
+CPPFLAGS += $(LIBS_CFLAGS)
+
+SRCS := $(wildcard $(PROPOSAL_WITHOUT_PERMUTE_COMPILE_DIR)/*.c)
+SRCS += $(wildcard $(PROPOSAL_WITHOUT_PERMUTE_COMPILE_DIR)/../../common/src/sample_memory_ops.c)
+
+LIB_S := $(PROPOSAL_WITHOUT_PERMUTE_COMPILE_DIR)/libruntime_plugin_proposal_without_permute.so
+
+# target source
+OBJS  := $(SRCS:%.c=%.o)
+
+.PHONY : clean all
+
+all: target
+
+target:$(OBJS)
+	@$(CC) $(LIBS_LD_CFLAGS) -shared -fPIC -o $(LIB_S) $(OBJS)
+
+clean:
+	@rm -f $(LIB_S)
+	@rm -f $(OBJS)

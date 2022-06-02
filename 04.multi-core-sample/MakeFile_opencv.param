@@ -1,0 +1,32 @@
+# Hisilicon Hi35xx sample Makefile.param
+export PARAM_FILE := ../../../../Makefile.param
+include $(PARAM_FILE)
+
+COMMON_DIR:=$(PWD)/../../../common
+AUDIO_ADP_DIR:=$(PWD)/../../../audio/adp
+
+include ../../../Makefile.param
+
+CFLAGS += -I/home/jimmy/Hi3559AV100_SDK_V2.0.2.0/mpp/sample/svp/multi-core-sample/thirdparty/include
+CFLAGS += -I/home/jimmy/Hi3559AV100_SDK_V2.0.2.0/mpp/sample/svp/multi-core-sample/thirdparty/opencv
+CFLAGS += -I/home/jimmy/Hi3559AV100_SDK_V2.0.2.0/mpp/sample/svp/multi-core-sample/thirdparty/opencv2
+
+
+
+#opencv_imgcodecs libjasper libjpeg libpng opencv_imgproc opencv_core IlmImf libtiff zlib
+
+
+
+MPI_LIBS += -L/home/jimmy/Hi3559AV100_SDK_V2.0.2.0/mpp/sample/svp/multi-core-sample/thirdparty/lib -lopencv_imgcodecs -llibjasper -llibjpeg -lopencv_imgproc -lopencv_core -lIlmImf -llibtiff -lzlib
+
+
+
+
+
+
+
+
+
+
+
+

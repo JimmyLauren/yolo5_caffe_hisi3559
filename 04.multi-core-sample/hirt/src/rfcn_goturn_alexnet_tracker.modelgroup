@@ -1,0 +1,131 @@
+name: "rfcn_goturn_alexnet_tracker"
+priority: 1
+max_tmpbuf_size_mb: 3072
+
+input {
+    name: "image"
+}
+
+connector {
+    name: "rfcn_pre"
+    bottom: { name: "image" }
+    top: { name: "image_resize" }
+}
+
+model {
+    name: "rfcn"
+    bottom: { name: "rfcn_pre.image_resize" }
+    top: { name: "proposal" }
+    top: { name: "cls_prob_reshape" }
+    top: { name: "bbox_pred_reshape" }
+    cops {
+        name: "proposal"
+    }
+}
+
+connector {
+    name: "rfcn_after"
+    bottom: { name: "rfcn.proposal" }
+    bottom: { name: "rfcn.cls_prob_reshape" }
+    bottom: { name: "rfcn.bbox_pred_reshape" }
+    top: { name: "detection_targets"
+           report_flag: true}
+}
+
+connector {
+    name: "feature_extra_1"
+    bottom: { name: "rfcn_after.detection_targets" }
+    top: { name: "targets_feature_d"
+           report_flag: true}
+}
+
+connector {
+    name: "go_turn_pre"
+    bottom: { name: "image" }
+    bottom: {
+        name: "compare.targets"
+        frame_depend: -1
+    }
+    bottom: {
+        name: "compare.targets_bbox"
+        frame_depend: -1
+    }
+    top: { name: "images_crop" }
+    top: { name: "targets_crop" }
+    top: { name: "location_edge"
+           report_flag: true}
+}
+
+model {
+    name: "go_turn"
+    bottom: { name: "go_turn_pre.targets_crop" }
+    bottom: { name: "go_turn_pre.images_crop" }
+    top: { name: "fc8_shapes" }
+}
+
+connector {
+    name: "go_turn_after"
+    bottom: { name: "go_turn.fc8_shapes" }
+    bottom: { name: "go_turn_pre.location_edge"}
+    top: { name: "tracker_targets"
+            type: VEC_S32
+            shape: {dim:2 dim:4 dim:1 dim:1}
+         }
+}
+
+connector {
+    name: "feature_extra_2"
+    bottom: { name: "go_turn_after.tracker_targets" }
+    top: { name: "targets_feature_t"
+           report_flag: true}
+}
+
+connector {
+    name: "compare"
+    bottom: { name: "image"}
+    bottom: { name: "feature_extra_1.targets_feature_d" }
+    bottom: { name: "feature_extra_2.targets_feature_t" }
+    top: { name: "targets"
+           report_flag: true}
+    top: { name: "targets_bbox"
+           report_flag: true}
+}
+
+#connector {
+#    name: "resize_1"
+#    bottom: { name: "image" }
+#    bottom: { name: "compare.targets" }
+#    top: { name: "targets_resize" }
+#}
+#
+#connector {
+#    name: "resize_2"
+#    bottom: { name: "image" }
+#    bottom: { name: "compare.targets" }
+#    top: { name: "targets_resize" }
+#}
+#
+#connector {
+#    name: "resize_3"
+#    bottom: { name: "image" }
+#    bottom: { name: "compare.targets" }
+#    top: { name: "targets_resize" }
+#}
+#
+#model {
+#    name: "alexnet_1"
+#    bottom: { name: "resize_1.targets_resize" }
+#    top: { name: "prob" }
+#}
+#
+#model {
+#    name: "alexnet_2"
+#    bottom: { name: "resize_2.targets_resize" }
+#    top: { name: "prob" }
+#}
+#
+#model {
+#    name: "alexnet_3"
+#    bottom: { name: "resize_3.targets_resize" }
+#    top: { name: "prob" }
+#}

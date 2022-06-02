@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/multi_core_sample.dir/nnie/sample_nnie_main.c.o CMakeFiles/multi_core_sample.dir/ive/sample/sample_ive_add.c.o  -o multi_core_sample 

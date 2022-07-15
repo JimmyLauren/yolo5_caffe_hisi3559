@@ -21,6 +21,9 @@ import cv2
 import torch
 import torch.backends.cudnn as cudnn
 
+from pascal_voc_writer import Writer
+import copy
+
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
@@ -61,6 +64,9 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         hide_conf=False,  # hide confidences
         half=False,  # use FP16 half-precision inference
         dnn=False,  # use OpenCV DNN for ONNX inference
+        # annotation settings
+        save_xml = False, # save results to xml
+        anno_path = None,
         ):
     source = str(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
@@ -100,7 +106,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     if pt and device.type != 'cpu':
         model(torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.model.parameters())))  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
-    for path, im, im0s, vid_cap, s in dataset:
+    for frameIdx, (path, im, im0s, vid_cap, s) in enumerate(dataset):
         # import pdb
         # pdb.set_trace()
         t1 = time_sync()
@@ -127,6 +133,8 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
 
         # Second-stage classifier (optional)
         # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
+
+        im_anno = im0s.copy() # for save xml annotation
 
         # Process predictions
         for i, det in enumerate(pred):  # per image
@@ -195,6 +203,41 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                             save_path += '.mp4'
                         vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                     vid_writer[i].write(im0)
+            
+        # save results to xml file
+        if save_xml:
+            if anno_path is None:
+                anno_path = os.path.join(save_dir, "xml_annotation")
+                if not os.path.exists(anno_path):
+                    os.makedirs(anno_path)
+            else:
+                if not os.path.exists(anno_path):
+                    os.makedirs(anno_path)
+            anno_img_path = None
+            anno_xml_path = None
+            if dataset.mode == 'image':
+                # save ori image and xml
+                anno_img_path = os.path.join(anno_path, p.name)
+                anno_xml_path = os.path.join(anno_path, p.stem+".xml")
+            else:
+                anno_img_path = os.path.join(anno_path, p.stem+str(frameIdx)+".jpg")
+                anno_xml_path = os.path.join(anno_path, p.stem+str(frameIdx)+".xml")
+            cv2.imwrite(anno_img_path,im_anno)
+            writer = Writer(anno_img_path,im_anno.shape[1],im_anno.shape[0])
+            
+            for i, det in enumerate(pred):
+                det4anno = det.clone().detach() # deep copy of pytorch tensor 
+                if len(det4anno):
+                    # Rescale boxes from img_size to im_anno size
+                    # shallow copy, so scale_coords shall not be called.
+                    # det4anno[:, :4] = scale_coords(im.shape[2:], det4anno[:, :4], im_anno.shape).round()
+                    for *xyxy, conf, cls in reversed(det4anno):
+                        c = int(cls)  # integer class
+                        label = None if hide_labels else names[c]
+                        writer.addObject(label,int(xyxy[0]),int(xyxy[1]),int(xyxy[2]),int(xyxy[3]))
+            writer.save(anno_xml_path)
+            
+        print("\n")
 
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
@@ -209,8 +252,8 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path(s)')
-    parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob, 0 for webcam')
-    parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[416], help='inference size h,w')
+    parser.add_argument('--source', type=str, default="rtsp://admin:admin123@192.168.129.125:554/cam/realmonitor?channel=1&subtype=0", help='file/dir/URL/glob, 0 for webcam')
+    parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[416,736], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.10, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
     parser.add_argument('--max-det', type=int, default=1000, help='maximum detections per image')
@@ -233,6 +276,9 @@ def parse_opt():
     parser.add_argument('--hide-conf', default=False, action='store_true', help='hide confidences')
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
+    # save xml annotation file
+    parser.add_argument('--save_xml', action='store_true', help='save xml annotation and jpg pair')
+    parser.add_argument('--anno_path', type=str, default=None, help='save xml and jpg path. if None, save to project dir')
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(FILE.stem, opt)

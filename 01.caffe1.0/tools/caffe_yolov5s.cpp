@@ -20,8 +20,8 @@
 // 用于计时
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-#define INPUT_W 416
-#define INPUT_H 416
+#define INPUT_W 640
+#define INPUT_H 384
 // #define IsPadding 0
 #define NUM_CLASS 2
 #define NMS_THRESH 0.45
@@ -97,33 +97,33 @@ bool get_all_files(const std::string& dir_in, std::vector<std::string>& files) {
 std::vector<Anchor> initAnchors(){
     std::vector<Anchor> anchors;
     Anchor anchor;
-    // 10,13, 16,30, 33,23, 30,61, 62,45, 59,119, 116,90,  156,198,  373,326
-    anchor.width = 10;
-    anchor.height = 13;
+    // 13,16, 26,29, 47,47, 69,68, 118,97, 102,163, 229,135, 190,208, 358,248
+    anchor.width = 13;
+    anchor.height = 16;
     anchors.emplace_back(anchor);
-    anchor.width = 16;
-    anchor.height = 30;
+    anchor.width = 26;
+    anchor.height = 29;
     anchors.emplace_back(anchor);
-    anchor.width = 33;
-    anchor.height = 23;
+    anchor.width = 47;
+    anchor.height = 47;
     anchors.emplace_back(anchor);
-    anchor.width = 30;
-    anchor.height = 61;
+    anchor.width = 69;
+    anchor.height = 68;
     anchors.emplace_back(anchor);
-    anchor.width = 62;
-    anchor.height = 45;
+    anchor.width = 118;
+    anchor.height = 97;
     anchors.emplace_back(anchor);
-    anchor.width = 59;
-    anchor.height = 119;
+    anchor.width = 102;
+    anchor.height = 163;
     anchors.emplace_back(anchor);
-    anchor.width = 116;
-    anchor.height = 90;
+    anchor.width = 229;
+    anchor.height = 135;
     anchors.emplace_back(anchor);
-    anchor.width = 156;
-    anchor.height = 198;
+    anchor.width = 190;
+    anchor.height = 208;
     anchors.emplace_back(anchor);
-    anchor.width = 373;
-    anchor.height = 326;
+    anchor.width = 358;
+    anchor.height = 248;
     anchors.emplace_back(anchor);
     return anchors;
 }
@@ -216,7 +216,7 @@ void postProcessParall(const int height, const int width, int scale_idx, float p
                     cy = (sigmoid(ptr[1]) * 2.f - 0.5f + static_cast<float>(h)) * static_cast<float>(Strides[scale_idx]);
                     w_b = powf(sigmoid(ptr[2]) * 2.f, 2) * Anchors[scale_idx * 3 + a].width;
                     h_b = powf(sigmoid(ptr[3]) * 2.f, 2) * Anchors[scale_idx * 3 + a].height;
-                    bbox.xmin = clip(cx - w_b / 2, 0.F, static_cast<float>(INPUT_W - 1));
+                    bbox.xmin = clip(cx - w_b / 2, 0.f, static_cast<float>(INPUT_W - 1));
                     bbox.ymin = clip(cy - h_b / 2, 0.f, static_cast<float>(INPUT_H - 1));
                     bbox.xmax = clip(cx + w_b / 2, 0.f, static_cast<float>(INPUT_W - 1));
                     bbox.ymax = clip(cy + h_b / 2, 0.f, static_cast<float>(INPUT_H - 1));
@@ -257,7 +257,7 @@ vector<Bbox> postProcess(vector<float *> origin_output, float postThres, float n
 cv::Mat preprocess_img(cv::Mat& img /*, bool is_padding*/) 
 {
     cv::Mat out;
-    cv::resize(img,out,cv::Size(INPUT_H,INPUT_W),cv::INTER_LINEAR);
+    cv::resize(img,out,cv::Size(INPUT_W,INPUT_H),cv::INTER_LINEAR);
     return out;
 }
 
@@ -298,9 +298,11 @@ int main(int argc, char* argv[])
 		cv::Mat pre_img = preprocess_img(img /*,IsPadding*/);
 		std::cout << "preprocess_img finished!\n";
 		int i = 0;
-		for (int row = 0; row < INPUT_H; ++row) {
+		for (int row = 0; row < INPUT_H; ++row) 
+        {
 			uchar* uc_pixel = pre_img.data + row * pre_img.step;
-			for (int col = 0; col < INPUT_W; ++col) {  // opencv读取原始格式为bgr格式，按照0,1,2顺序为bgr，2,1,0顺序为rgb格式
+			for (int col = 0; col < INPUT_W; ++col) 
+            {  // opencv读取原始格式为bgr格式，按照0,1,2顺序为bgr，2,1,0顺序为rgb格式
 				data[i] = (float)uc_pixel[0] / 255.0;
 				data[i + INPUT_H * INPUT_W] = (float)uc_pixel[1] / 255.0;
 				data[i + 2 * INPUT_H * INPUT_W] = (float)uc_pixel[2] / 255.0;
@@ -327,13 +329,13 @@ int main(int argc, char* argv[])
 		float total_time = 0;    
 		//前向运算
 		int nums = 1;
-		for (int i = 0; i < nums; ++i){
-			boost::posix_time::ptime start_time_1 = boost::posix_time::microsec_clock::local_time();
-			caffe_net.Forward();
-			boost::posix_time::ptime end_time_1 = boost::posix_time::microsec_clock::local_time();
-			total_time += (end_time_1 - start_time_1).total_milliseconds(); 
-			std::cout << "[ " << i << " ] " << (end_time_1 - start_time_1).total_milliseconds() << " ms." << std::endl;
-		}
+
+        boost::posix_time::ptime start_time_1 = boost::posix_time::microsec_clock::local_time();
+        caffe_net.Forward();
+        boost::posix_time::ptime end_time_1 = boost::posix_time::microsec_clock::local_time();
+        total_time += (end_time_1 - start_time_1).total_milliseconds(); 
+        std::cout << "[ " << idx << " ] " << (end_time_1 - start_time_1).total_milliseconds() << " ms." << std::endl;
+
 
 		//boost::posix_time::ptime end_time_ = boost::posix_time::microsec_clock::local_time(); //结束计时
 
@@ -357,7 +359,7 @@ int main(int argc, char* argv[])
 		vector<Bbox> bboxes = postProcess(cur_output_tensors, CONF_THRESH, NMS_THRESH);
 		
 
-		yoloTransform(showImage.rows, showImage.cols, INPUT_W, INPUT_H, bboxes /*, IsPadding*/);
+		yoloTransform(showImage.rows, showImage.cols, INPUT_H, INPUT_W, bboxes /*, IsPadding*/);
 		showImage = renderBoundingBox(showImage, bboxes);
 
 		string sFileName = files[idx].substr(files[idx].find_last_of("/")+1);

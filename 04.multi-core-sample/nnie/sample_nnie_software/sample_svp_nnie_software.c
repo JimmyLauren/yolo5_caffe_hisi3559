@@ -2573,7 +2573,7 @@ static HI_S32 SVP_NNIE_Yolov2_GetResult(HI_S32 *ps32InputData,HI_U32 u32GridNumW
 *           Modification : Create
 *
 *****************************************************************************/
-static HI_S32 SVP_NNIE_Yolov3_GetResult(HI_S32 **pps32InputData,HI_U32 au32GridNumWidth[],
+static HI_S32 SVP_NNIE_Yolov3_GetResult_bak(HI_S32 **pps32InputData,HI_U32 au32GridNumWidth[],
     HI_U32 au32GridNumHeight[],HI_U32 au32Stride[],HI_U32 u32EachGridBbox,HI_U32 u32ClassNum,HI_U32 u32SrcWidth,
     HI_U32 u32SrcHeight,HI_U32 u32MaxRoiNum,HI_U32 u32NmsThresh,HI_U32 u32ConfThresh,
     HI_FLOAT af32Bias[SAMPLE_SVP_NNIE_YOLOV3_REPORT_BLOB_NUM][SAMPLE_SVP_NNIE_YOLOV3_EACH_GRID_BIAS_NUM],
@@ -2729,6 +2729,208 @@ static HI_S32 SVP_NNIE_Yolov3_GetResult(HI_S32 **pps32InputData,HI_U32 au32GridN
         }
         *(ps32ClassRoiNum+i) = u32ClassRoiNum;
     }
+
+    return HI_SUCCESS;
+}
+
+static HI_S32 SVP_NNIE_Yolov3_GetResult(HI_S32 **pps32InputData,HI_U32 au32GridNumWidth[],
+    HI_U32 au32GridNumHeight[],HI_U32 au32Stride[],HI_U32 u32EachGridBbox,HI_U32 u32ClassNum,HI_U32 u32SrcWidth,
+    HI_U32 u32SrcHeight,HI_U32 u32MaxRoiNum,HI_U32 u32NmsThresh,HI_U32 u32ConfThresh,
+    HI_FLOAT af32Bias[SAMPLE_SVP_NNIE_YOLOV3_REPORT_BLOB_NUM][SAMPLE_SVP_NNIE_YOLOV3_EACH_GRID_BIAS_NUM],
+    HI_S32* ps32TmpBuf,HI_S32 *ps32DstScore, HI_S32 *ps32DstRoi, HI_S32 *ps32ClassRoiNum)
+{
+    // print debug time
+    double post_start;
+    post_start = getTimeOfMSeconds();
+
+
+    HI_S32 *ps32InputBlob = NULL;
+    HI_FLOAT *pf32Permute = NULL;
+    SAMPLE_SVP_NNIE_YOLOV3_BBOX_S *pstBbox = NULL;
+    HI_S32 *ps32AssistBuf = NULL;
+    HI_U32 u32TotalBboxNum = 0;
+    HI_U32 u32ChnOffset = 0;
+    HI_U32 u32HeightOffset = 0;
+    HI_U32 u32BboxNum = 0;
+    HI_U32 u32GridXIdx;
+    HI_U32 u32GridYIdx;
+    HI_U32 u32Offset;
+    HI_FLOAT f32StartX;
+    HI_FLOAT f32StartY;
+    HI_FLOAT f32Width;
+    HI_FLOAT f32Height;
+    HI_FLOAT f32ObjScore;
+    HI_U32 u32MaxValueIndex = 0;
+    HI_FLOAT f32MaxScore;
+    HI_S32 s32ClassScore;
+    HI_U32 u32ClassRoiNum;
+    HI_U32 i = 0, j = 0, k = 0, c = 0, h = 0, w = 0;
+    HI_U32 u32BlobSize = 0;
+    HI_U32 u32MaxBlobSize = 0;
+
+
+
+    for(i = 0; i < SAMPLE_SVP_NNIE_YOLOV3_REPORT_BLOB_NUM; i++)
+    {
+        //u32BlobSize = au32GridNumWidth[i]*au32GridNumHeight[i]*sizeof(HI_U32)*SAMPLE_SVP_NNIE_YOLOV3_EACH_BBOX_INFER_RESULT_NUM*u32EachGridBbox;
+        u32BlobSize = au32GridNumWidth[i]*au32GridNumHeight[i]*sizeof(HI_U32)*
+                (5+u32ClassNum)*u32EachGridBbox;
+        //printf("\nu32BlobSize:%d  u32BlobSize:%d\n",u32BlobSize,u32BlobSize);
+        if(u32MaxBlobSize < u32BlobSize)
+        {
+            u32MaxBlobSize = u32BlobSize;
+        }
+    }
+
+    for(i = 0; i < SAMPLE_SVP_NNIE_YOLOV3_REPORT_BLOB_NUM; i++)
+    {
+        u32TotalBboxNum += au32GridNumWidth[i]*au32GridNumHeight[i]*u32EachGridBbox;
+    }
+
+    //get each tmpbuf addr
+    pf32Permute = (HI_FLOAT*)ps32TmpBuf;
+    pstBbox = (SAMPLE_SVP_NNIE_YOLOV3_BBOX_S*)(pf32Permute+u32MaxBlobSize/sizeof(HI_S32));
+    ps32AssistBuf = (HI_S32*)(pstBbox+u32TotalBboxNum);
+
+    printf("post process time1: %f\n", getTimeOfMSeconds() - post_start);
+
+    for(i = 0; i < SAMPLE_SVP_NNIE_YOLOV3_REPORT_BLOB_NUM; i++)
+    {
+        //permute
+        u32Offset = 0;
+        ps32InputBlob = pps32InputData[i];
+        u32ChnOffset = au32GridNumHeight[i]*au32Stride[i]/sizeof(HI_S32);
+        u32HeightOffset = au32Stride[i]/sizeof(HI_S32);
+        for (h = 0; h < au32GridNumHeight[i]; h++)
+        {
+            for (w = 0; w < au32GridNumWidth[i]; w++)
+            {
+                //for (c = 0; c < SAMPLE_SVP_NNIE_YOLOV3_EACH_BBOX_INFER_RESULT_NUM*u32EachGridBbox; c++)
+                for (c = 0; c < (5+u32ClassNum)*u32EachGridBbox; c++)
+                {
+                    pf32Permute[u32Offset++] = (HI_FLOAT)(ps32InputBlob[c*u32ChnOffset+h*u32HeightOffset+w]) / SAMPLE_SVP_NNIE_QUANT_BASE;
+                }
+            }
+        }
+
+
+//        // debug
+//        printf("ID:%d,  au32GridNumWidth:%d,  au32GridNumHeight:%d\n",
+//                i,au32GridNumWidth[i], au32GridNumHeight[i]
+//                );
+
+
+        //decode bbox and calculate score
+        for(j = 0; j < au32GridNumWidth[i]*au32GridNumHeight[i]; j++)
+        {
+            u32GridXIdx = j % au32GridNumWidth[i];
+            u32GridYIdx = j / au32GridNumWidth[i];
+            for (k = 0; k < u32EachGridBbox; k++)
+            {
+                u32MaxValueIndex = 0;
+                // u32Offset = (j * u32EachGridBbox + k) * SAMPLE_SVP_NNIE_YOLOV3_EACH_BBOX_INFER_RESULT_NUM;
+                u32Offset = (j * u32EachGridBbox + k) * (5+u32ClassNum);
+
+                //calculate score
+                f32ObjScore = SAMPLE_SVP_NNIE_SIGMOID(pf32Permute[u32Offset + 4]);
+
+                //(void)SVP_NNIE_SoftMax(&pf32Permute[u32Offset + 5], u32ClassNum);
+                for(HI_U32 idx = 0; idx < u32ClassNum; idx++)
+                {
+                    pf32Permute[u32Offset + 5 + idx] = SAMPLE_SVP_NNIE_SIGMOID(pf32Permute[u32Offset + 5 + idx]);
+                }
+
+                f32MaxScore = SVP_NNIE_Yolov2_GetMaxVal(&pf32Permute[u32Offset + 5], u32ClassNum, &u32MaxValueIndex);
+                s32ClassScore = (HI_S32)(f32MaxScore * f32ObjScore*SAMPLE_SVP_NNIE_QUANT_BASE);
+
+                //filter low score roi
+                if (s32ClassScore > u32ConfThresh)
+                {
+                    //decoded box
+#if 0 //yolov3, yolov4 use
+                    //decode bbox
+                    f32StartX = ((HI_FLOAT)u32GridXIdx + SAMPLE_SVP_NNIE_SIGMOID(pf32Permute[u32Offset + 0])) / au32GridNumWidth[i];
+                    f32StartY = ((HI_FLOAT)u32GridYIdx + SAMPLE_SVP_NNIE_SIGMOID(pf32Permute[u32Offset + 1])) / au32GridNumHeight[i];
+                    f32Width = (HI_FLOAT)(exp(pf32Permute[u32Offset + 2]) * af32Bias[i][2*k]) / u32SrcWidth;
+                    f32Height = (HI_FLOAT)(exp(pf32Permute[u32Offset + 3]) * af32Bias[i][2*k + 1]) / u32SrcHeight;
+#else //yolov5 use
+                    f32StartX = SAMPLE_SVP_NNIE_SIGMOID(pf32Permute[u32Offset+0]);
+                    f32StartY = SAMPLE_SVP_NNIE_SIGMOID(pf32Permute[u32Offset+1]);
+                    f32Width = SAMPLE_SVP_NNIE_SIGMOID(pf32Permute[u32Offset+2]);
+                    f32Height = SAMPLE_SVP_NNIE_SIGMOID(pf32Permute[u32Offset+3]);
+                    f32StartX = (f32StartX*2-0.5+(HI_FLOAT)u32GridXIdx)/au32GridNumWidth[i];
+                    f32StartY = (f32StartY*2-0.5+(HI_FLOAT)u32GridYIdx)/au32GridNumHeight[i];
+                    f32Width = (f32Width*2.)*(f32Width*2.)*af32Bias[i][2*k]/u32SrcWidth;
+                    f32Height = (f32Height*2.)*(f32Height*2.)*af32Bias[i][2*k+1]/u32SrcHeight;
+#endif
+
+
+
+                    pstBbox[u32BboxNum].f32Xmin= (HI_FLOAT)(f32StartX - f32Width * 0.5f);
+                    pstBbox[u32BboxNum].f32Ymin= (HI_FLOAT)(f32StartY - f32Height * 0.5f);
+                    pstBbox[u32BboxNum].f32Xmax= (HI_FLOAT)(f32StartX + f32Width * 0.5f);
+                    pstBbox[u32BboxNum].f32Ymax= (HI_FLOAT)(f32StartY + f32Height * 0.5f);
+                    pstBbox[u32BboxNum].s32ClsScore = s32ClassScore;
+                    pstBbox[u32BboxNum].u32Mask= 0;
+                    pstBbox[u32BboxNum].u32ClassIdx = (HI_S32)(u32MaxValueIndex+1);
+                    u32BboxNum++;
+
+//                    // debug
+//                    printf("xmin:%f, ymin:%f, xmax:%f, ymax:%f, score:%d\n",
+//                           (HI_FLOAT)(f32StartX - f32Width * 0.5f),
+//                           (HI_FLOAT)(f32StartY - f32Height * 0.5f),
+//                           (HI_FLOAT)(f32StartX + f32Width * 0.5f),
+//                           (HI_FLOAT)(f32StartY + f32Height * 0.5f),
+//                           s32ClassScore);
+                }
+            }
+        }
+    }
+
+    printf("post process time2: %f\n", getTimeOfMSeconds() - post_start);
+
+    //quick sort
+    (void)SVP_NNIE_Yolo_NonRecursiveArgQuickSort((HI_S32*)pstBbox, 0, u32BboxNum - 1,
+        sizeof(SAMPLE_SVP_NNIE_YOLOV3_BBOX_S)/sizeof(HI_U32),4,(SAMPLE_SVP_NNIE_STACK_S*)ps32AssistBuf);
+
+    printf("post process time3: sort time: %f\n", getTimeOfMSeconds() - post_start);
+
+    //Yolov3 and Yolov2 have the same Nms operation
+    (void)SVP_NNIE_Yolov2_NonMaxSuppression(pstBbox, u32BboxNum, u32NmsThresh, sizeof(SAMPLE_SVP_NNIE_YOLOV3_BBOX_S)/sizeof(HI_U32));
+
+    printf("post process time4: nms time: %f\n", getTimeOfMSeconds() - post_start);
+
+    //Get result
+    printf("u32ClassNum:%u\n",u32ClassNum);
+    for (i = 1; i < u32ClassNum+1; i++)
+    {
+        //printf("i:%u\n",i);
+        u32ClassRoiNum = 0;
+        for(j = 0; j < u32BboxNum; j++)
+        {
+            if ((0 == pstBbox[j].u32Mask) && (i == pstBbox[j].u32ClassIdx) && (u32ClassRoiNum < u32MaxRoiNum))
+            {
+                *(ps32DstRoi++) = SAMPLE_SVP_NNIE_MAX((HI_S32)(pstBbox[j].f32Xmin*u32SrcWidth), 0);
+                *(ps32DstRoi++) = SAMPLE_SVP_NNIE_MAX((HI_S32)(pstBbox[j].f32Ymin*u32SrcHeight), 0);
+                *(ps32DstRoi++) = SAMPLE_SVP_NNIE_MIN((HI_S32)(pstBbox[j].f32Xmax*u32SrcWidth), u32SrcWidth);
+                *(ps32DstRoi++) = SAMPLE_SVP_NNIE_MIN((HI_S32)(pstBbox[j].f32Ymax*u32SrcHeight), u32SrcHeight);
+                *(ps32DstScore++) = pstBbox[j].s32ClsScore;
+                u32ClassRoiNum++;
+
+//                // debug
+//                printf("xmin:%d, ymin:%d, xmax:%d, ymax:%d, score:%d, srcwidth:%d, srcheight:%d\n",
+//                       SAMPLE_SVP_NNIE_MAX((HI_S32)(pstBbox[j].f32Xmin*u32SrcWidth), 0),
+//                       SAMPLE_SVP_NNIE_MAX((HI_S32)(pstBbox[j].f32Ymin*u32SrcHeight), 0),
+//                       SAMPLE_SVP_NNIE_MIN((HI_S32)(pstBbox[j].f32Xmax*u32SrcWidth), (HI_S32)u32SrcWidth),
+//                       SAMPLE_SVP_NNIE_MIN((HI_S32)(pstBbox[j].f32Ymax*u32SrcHeight), (HI_S32)u32SrcHeight),
+//                       pstBbox[j].s32ClsScore,
+//                       u32SrcWidth,
+//                       u32SrcHeight);
+            }
+        }
+        *(ps32ClassRoiNum+i) = u32ClassRoiNum;
+    }
+    printf("post process time5: all post process time %f\n", getTimeOfMSeconds() - post_start);
 
     return HI_SUCCESS;
 }
